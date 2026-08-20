@@ -3,50 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ChargeElevenPay</title>
+  <title>PayPayごっこ - チャージ専用機</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     body { font-family: 'Helvetica Neue', Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f6f9; margin: 0; }
     .container { max-width: 440px; margin: 0 auto; }
-    
     .card { background: white; padding: 35px 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-top: 10px; }
     h1 { color: #007bff; font-size: 26px; margin-top: 0; margin-bottom: 25px; font-weight: bold; }
     
-    /* 1. 選択画面 */
-    .quick-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-    .quick-btn { 
-      padding: 24px 10px; 
-      background: #f0f4f8; 
-      border: 3px solid #cce5ff; 
-      color: #007bff; 
-      border-radius: 16px; 
-      font-weight: bold; 
-      font-size: 22px; 
+    /* 金額ボタンのグリッド */
+    .amount-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
+    .amount-btn {
+      padding: 20px 10px;
+      background: #eef6ff;
+      border: 2px solid #b3d7ff;
+      color: #007bff;
+      border-radius: 16px;
+      font-size: 20px;
+      font-weight: bold;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.1s;
     }
-    .quick-btn:active { background: #d0e4ff; }
+    .amount-btn:active { background: #d0e4ff; transform: scale(0.98); }
 
-    #custom-input-area { display: none; margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 16px; border: 1px solid #eee; }
-    label { display: block; font-size: 15px; color: #555; margin-bottom: 10px; font-weight: bold; }
-    input { width: 100%; padding: 15px; font-size: 24px; border: 2px solid #ddd; border-radius: 12px; text-align: center; font-weight: bold; }
-    
-    .main-btn { width: 100%; padding: 16px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; margin-top: 15px; }
-    
-    /* 2. 確認画面 */
-    #confirm-view { display: none; }
-    .confirm-text { font-size: 18px; color: #333; font-weight: bold; margin-bottom: 15px; }
-    .confirm-amount { font-size: 40px; color: #007bff; font-weight: bold; margin: 15px 0 25px 0; }
-    .confirm-btn-group { display: flex; gap: 10px; }
-    .cancel-btn { flex: 1; padding: 16px; background: #6c757d; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; }
-    .ok-btn { flex: 1.5; padding: 16px; background: #007bff; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; }
+    /* その他入力エリア */
+    #custom-input-area { margin-top: 15px; background: #f8f9fa; padding: 15px; border-radius: 16px; border: 1px solid #eee; }
+    input { width: 100%; padding: 14px; font-size: 24px; border: 2px solid #ddd; border-radius: 12px; text-align: center; font-weight: bold; }
 
-    /* 3. QR表示画面 */
-    #qr-view { display: none; }
-    #qrcode { margin: 25px auto; display: flex; justify-content: center; }
-    .qr-badge { font-size: 24px; color: #007bff; font-weight: bold; margin-bottom: 20px; }
-    .reset-btn { width: 100%; padding: 16px; background: #6c757d; color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 18px; cursor: pointer; }
+    .main-btn { width: 100%; padding: 18px; font-size: 20px; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; margin-top: 20px; background: #007bff; }
+    .hidden { display: none; }
+    
+    /* 演出系 */
+    .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .instruction-box { background: #eef6ff; border: 2px solid #b3d7ff; padding: 30px; border-radius: 15px; margin: 20px 0; font-size: 22px; font-weight: bold; color: #0056b3; }
   </style>
 </head>
 <body>
@@ -55,98 +46,114 @@
   <div class="card">
     <h1>チャージ専用機</h1>
 
-    <!-- 1. 金額選択画面 -->
-    <div id="select-view">
-      <div class="quick-buttons">
-        <button class="quick-btn" onclick="askConfirmation(1000)">1,000円</button>
-        <button class="quick-btn" onclick="askConfirmation(3000)">3,000円</button>
-        <button class="quick-btn" onclick="askConfirmation(5000)">5,000円</button>
-        <button class="quick-btn" onclick="showCustomInput()">その他</button>
+    <!-- 1. 金額選択/入力 -->
+    <div id="input-view">
+      <label style="display:block; margin-bottom:15px; font-weight:bold; font-size:16px;">チャージ金額を選んでください</label>
+      <div class="amount-grid">
+        <button class="amount-btn" onclick="selectAmount(1000)">1,000円</button>
+        <button class="amount-btn" onclick="selectAmount(2000)">2,000円</button>
+        <button class="amount-btn" onclick="selectAmount(3000)">3,000円</button>
+        <button class="amount-btn" onclick="selectAmount(5000)">5,000円</button>
+        <button class="amount-btn" style="grid-column: span 2;" onclick="toggleCustomInput()">その他（金額入力）</button>
       </div>
 
-      <div id="custom-input-area">
-        <label>金額を入力（1,000円単位）</label>
-        <input type="number" id="custom-amount" placeholder="例: 2000" step="1000">
-        <button class="main-btn" onclick="submitCustomAmount()">次へ進む</button>
+      <!-- その他を押した時の入力エリア -->
+      <div id="custom-input-area" class="hidden">
+        <input type="number" id="custom-amount" placeholder="金額を入力" step="1000">
+        <button class="main-btn" onclick="submitCustomAmount()" style="margin-top: 10px;">決定</button>
       </div>
     </div>
 
     <!-- 2. 確認画面 -->
-    <div id="confirm-view">
-      <div class="confirm-text">こちらの金額でチャージしますか？</div>
-      <div class="confirm-amount" id="display-confirm-amount">0円</div>
-      <div class="confirm-btn-group">
-        <button class="cancel-btn" onclick="resetToStart()">戻る</button>
-        <button class="ok-btn" onclick="generateAndShowQR()">はい</button>
-      </div>
+    <div id="confirm-view" class="hidden">
+      <div style="font-size: 18px; font-weight: bold;">こちらの金額でチャージしますか？</div>
+      <div id="display-confirm-amount" style="font-size: 40px; font-weight: bold; margin: 20px 0; color:#007bff;">0円</div>
+      <button class="main-btn" onclick="showInsertScreen()">はい</button>
+      <button class="main-btn" onclick="resetToInput()" style="background:#6c757d;">戻る</button>
     </div>
 
-    <!-- 3. QRコード表示画面 -->
-    <div id="qr-view">
-      <div class="qr-badge" id="qr-status"></div>
-      <div id="qrcode"></div>
+    <!-- 3. お金投入指示 -->
+    <div id="insert-view" class="hidden">
+      <div class="instruction-box">下の投入口に<br>お金を入れてください</div>
+      <button class="main-btn" onclick="startProcessing()" style="background:#28a745;">投入完了</button>
+    </div>
+
+    <!-- 4. 確認中... -->
+    <div id="processing-view" class="hidden">
+      <div class="spinner"></div>
+      <div style="font-size: 22px; font-weight: bold; color: #555;">確認中...</div>
+    </div>
+
+    <!-- 5. QRコード表示 -->
+    <div id="qr-view" class="hidden">
+      <div style="font-size:20px; font-weight:bold; color:#007bff; margin-bottom:15px;" id="qr-status"></div>
+      <div id="qrcode" style="margin: 20px auto; display: flex; justify-content: center;"></div>
       <p style="color: #666; font-size: 15px;">スマホアプリで読み取ってください</p>
-      <button class="reset-btn" onclick="resetToStart()">最初に戻る</button>
+      <button class="main-btn" onclick="resetToInput()" style="background:#6c757d;">最初に戻る</button>
     </div>
-
   </div>
 </div>
 
 <script>
-  let selectedAmount = 0;
-  let qrcode = new QRCode(document.getElementById("qrcode"), {
-    width: 220,
-    height: 220
-  });
+  let tempAmount = 0;
 
-  function showCustomInput() {
-    document.getElementById("custom-input-area").style.display = "block";
+  function selectAmount(amount) {
+    tempAmount = amount;
+    showConfirmScreen();
+  }
+
+  function toggleCustomInput() {
+    const area = document.getElementById('custom-input-area');
+    area.classList.toggle('hidden');
   }
 
   function submitCustomAmount() {
     let amount = parseInt(document.getElementById("custom-amount").value);
-
-    if (!amount || amount <= 0) {
-      alert("金額を入力してください");
-      return;
-    }
-
-    if (amount % 1000 !== 0) {
-      alert("チャージは1,000円単位でしかできません");
-      return;
-    }
-
-    askConfirmation(amount);
-  }
-
-  // 金額を選んだら確認画面を表示する
-  function askConfirmation(amount) {
-    selectedAmount = amount;
-    document.getElementById("display-confirm-amount").innerText = `${amount.toLocaleString()} 円`;
+    if (!amount || amount <= 0) return alert("金額を入力してください");
+    if (amount % 1000 !== 0) return alert("チャージは1,000円単位でしかできません");
     
-    document.getElementById("select-view").style.display = "none";
-    document.getElementById("confirm-view").style.display = "block";
+    tempAmount = amount;
+    showConfirmScreen();
   }
 
-  // 「はい（発行）」を押した時に初めてQRコードを生成
-  function generateAndShowQR() {
-    let qrData = "CHARGE_" + selectedAmount;
-    qrcode.makeCode(qrData);
-
-    document.getElementById("qr-status").innerText = `チャージ額: ${selectedAmount.toLocaleString()}円`;
-    
-    document.getElementById("confirm-view").style.display = "none";
-    document.getElementById("qr-view").style.display = "block";
+  function showConfirmScreen() {
+    document.getElementById("display-confirm-amount").innerText = `${tempAmount.toLocaleString()} 円`;
+    document.getElementById('input-view').classList.add('hidden');
+    document.getElementById('confirm-view').classList.remove('hidden');
   }
 
-  // 最初に戻る・やり直す
-  function resetToStart() {
-    selectedAmount = 0;
+  function showInsertScreen() {
+    document.getElementById('confirm-view').classList.add('hidden');
+    document.getElementById('insert-view').classList.remove('hidden');
+  }
+
+  function startProcessing() {
+    document.getElementById('insert-view').classList.add('hidden');
+    document.getElementById('processing-view').classList.remove('hidden');
+
+    setTimeout(() => {
+      document.getElementById('processing-view').classList.add('hidden');
+      document.getElementById('qr-view').classList.remove('hidden');
+      
+      document.getElementById("qr-status").innerText = `チャージ額: ${tempAmount.toLocaleString()}円`;
+      document.getElementById("qrcode").innerHTML = "";
+      new QRCode(document.getElementById("qrcode"), {
+        text: "CHARGE_" + tempAmount,
+        width: 220, 
+        height: 220
+      });
+    }, 2500);
+  }
+
+  function resetToInput() {
+    tempAmount = 0;
     document.getElementById("custom-amount").value = "";
-    document.getElementById("custom-input-area").style.display = "none";
-    document.getElementById("confirm-view").style.display = "none";
-    document.getElementById("qr-view").style.display = "none";
-    document.getElementById("select-view").style.display = "block";
+    document.getElementById('custom-input-area').classList.add('hidden');
+    document.getElementById('input-view').classList.remove('hidden');
+    document.getElementById('confirm-view').classList.add('hidden');
+    document.getElementById('insert-view').classList.add('hidden');
+    document.getElementById('processing-view').classList.add('hidden');
+    document.getElementById('qr-view').classList.add('hidden');
   }
 </script>
 
